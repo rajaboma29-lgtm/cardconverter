@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>مصنع البطاقات</title>
+  <style>
+    :root { --bg:#0b1220; --card:#0f1a30; --muted:#9aa4b2; --txt:#e6eefc; --accent:#3b82f6; --ok:#22c55e; }
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial; background:linear-gradient(180deg,#070b14,#0b1220); color:var(--txt);}
+    .wrap{max-width:1100px;margin:0 auto;padding:24px;box-sizing:border-box;}
+    .top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px;}
+    .brand{display:flex;flex-direction:column;gap:2px}
+    .brand h1{margin:0;font-size:22px}
+    .brand p{margin:0;color:var(--muted);font-size:12px;line-height:1.3}
+    .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:12px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:minmax(360px,440px) 1fr;gap:28px;align-items:start}
+    @media (max-width: 1024px){ .grid{grid-template-columns:1fr} }
+    .panel{background:rgba(15,26,48,.92); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:22px; box-shadow:0 10px 26px rgba(0,0,0,.32); width:100%; box-sizing:border-box; overflow:hidden}
+    label{display:block;font-size:13px;color:var(--muted);margin:16px 0 8px}
+    input[type=file], input[type=number], input[type=text], input[type=color], select{width:100%; padding:14px; background:#0b1220; border:1px solid rgba(255,255,255,.12); border-radius:14px; color:var(--txt); margin-bottom:14px; box-sizing:border-box;}
+    input[type=color]{padding:8px; height:48px}
+    .row{display:flex;gap:16px;align-items:stretch}
+    .row > div{flex:1}
+    button{cursor:pointer;border:0;border-radius:16px;padding:14px 12px;font-weight:800;font-size:14px}
+    .btn{background:var(--accent); color:white; width:100%}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn2{background:#111b33;color:var(--txt); border:1px solid rgba(255,255,255,.12); width:100%}
+    .hint{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.4}
+    .canvasWrap{position:relative; background:#050812; border:1px solid rgba(255,255,255,.12); border-radius:18px; overflow:hidden}
+    canvas{display:block; width:100%; height:auto; background:#050812}
+    .status{margin-top:10px;font-size:13px}
+    a.dl{display:inline-block; margin-top:10px; color:white; background:var(--ok); padding:10px 12px; border-radius:12px; text-decoration:none; font-weight:800}
+    a.dl.secondary{background:#334155}
+    .small{font-size:11px;color:var(--muted)}
+    .bar{height:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:999px;overflow:hidden;margin-top:10px}
+    .bar > div{height:100%;width:0%;background:var(--ok);transition:width .25s ease}
+    .fileList{margin-top:-6px;margin-bottom:10px;color:var(--muted);font-size:12px;line-height:1.4}
+
+    /* ✅ نافذة معاينة داخل الصفحة */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:9999;padding:16px}
+    .modal.open{display:flex}
+    .modalCard{width:min(1100px, 96vw);height:min(88vh, 900px);background:#0b1220;border:1px solid rgba(255,255,255,.14);border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column}
+    .modalTop{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.10)}
+    .modalTop b{font-size:14px}
+    .modalTop .x{background:#111b33;border:1px solid rgba(255,255,255,.14);color:var(--txt);border-radius:12px;padding:10px 12px;font-weight:900}
+    .modalBody{flex:1}
+    .modalBody iframe{width:100%;height:100%;border:0;background:#0b1220}
+
+    /* ✅ نافذة تأكيد بعد المعاينة */
+    .confirmCard{width:min(520px,96vw);background:#0b1220;border:1px solid rgba(255,255,255,.14);border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.55);padding:16px}
+    .confirmCard h3{margin:0 0 8px;font-size:16px}
+    .confirmCard p{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.5}
+    .confirmActions{display:flex;gap:10px;flex-wrap:wrap}
+    .confirmActions .btn{width:auto;flex:1}
+    .confirmActions .btn2{width:auto;flex:1}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <h1>🎴 مصنع البطاقات</h1>
+        <p>هذا العمل صدقة جارية عن روح والدتي وأخي رحمهم الله<br><span class="small">Eng : RajabSukker</span></p>
+      </div>
+      <div class="pill">
+        A4 — <span id="cardsPerPage">50</span> بطاقة/صفحة
+        (<span id="gridTxt">5×10</span>) — <span id="oriTxt">عمودي</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <label>1) ارفع تصميم البطاقة (PNG/JPG)</label>
+        <input id="design" type="file" accept="image/png,image/jpeg" />
+
+        <label>2) ارفع ملف/ملفات البيانات (PDF/CSV/Excel) — يمكن اختيار أكثر من ملف</label>
+        <input id="datafiles" type="file" multiple
+          accept="application/pdf,text/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx" />
+        <div class="fileList" id="fileList"></div>
+
+        <div class="row">
+          <div>
+            <label>الحد الأقصى للبطاقات</label>
+            <input id="maxCards" type="number" min="1" max="10000" value="10000"/>
+          </div>
+          <div>
+            <label>عدد البطاقات بالصفحة</label>
+            <input id="cardsCalc" type="text" value="50" disabled />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>أعمدة (Cols)</label>
+            <input id="cols" type="number" min="1" max="10" value="5"/>
+          </div>
+          <div>
+            <label>صفوف (Rows)</label>
+            <input id="rows" type="number" min="1" max="14" value="10"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>اتجاه الصفحة (A4)</label>
+            <select id="orientation">
+              <option value="portrait" selected>عمودي (Portrait)</option>
+              <option value="landscape">أفقي (Landscape)</option>
+            </select>
+          </div>
+          <div>
+            <label>الهامش (نقطة)</label>
+            <input id="marginPt" type="number" min="0" max="60" value="18"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>المسافة بين البطاقات (نقطة)</label>
+            <input id="gapPt" type="number" min="0" max="30" value="6"/>
+          </div>
+          <div>
+            <label>خيارات الطباعة</label>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">
+              <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--txt)">
+                <input id="autoFit" type="checkbox" checked style="width:18px;height:18px;margin:0" />
+                ضبط تلقائي للهوامش والمسافات
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--txt)">
+                <input id="cropMarks" type="checkbox" style="width:18px;height:18px;margin:0" />
+                علامات قص للطباعة (Crop marks)
+              </label>
+            </div>
+            <div class="hint">عند تفعيل الضبط التلقائي سيتم تجاهل قيم الهامش/المسافة واختيار الأفضل حسب الشبكة.</div>
+          </div>
+        </div>
+
+        <label>3) خصائص النص</label>
+        <div class="row">
+          <div>
+            <label>حجم اسم المستخدم</label>
+            <input id="uSize" type="number" min="6" max="60" value="14"/>
+          </div>
+          <div>
+            <label>لون اسم المستخدم</label>
+            <input id="uColor" type="color" value="#ffffff"/>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>حجم كلمة المرور</label>
+            <input id="pSize" type="number" min="6" max="60" value="14"/>
+          </div>
+          <div>
+            <label>لون كلمة المرور</label>
+            <input id="pColor" type="color" value="#ffffff"/>
+          </div>
+        </div>
+
+        <label>4) حدّد مكان الحقول على التصميم</label>
+        <button class="btn2" id="addUser">➕ إضافة: اسم المستخدم</button>
+        <div style="height:8px"></div>
+        <button class="btn2" id="addPass">➕ إضافة: كلمة المرور</button>
+        <p class="hint">اسحب المربع لتحريكه. اسحب الزاوية السفلية اليسرى لتغيير الحجم. (مربعين فقط: اليوزر والباس)</p>
+
+        <label>5) المعاينة ثم التوليد</label>
+        <button class="btn2" id="previewBtn" disabled>👁️ معاينة قبل التوليد (أول صفحة)</button>
+        <div style="height:10px"></div>
+        <button class="btn" id="go" disabled>🖨️ توليد الملف النهائي</button>
+        <p class="hint">يفضل تعمل معاينة أولًا للتأكد من أماكن النص والشبكة قبل الطباعة النهائية.</p>
+
+        <div class="status" id="status"></div>
+        <div class="bar" id="bar" style="display:none"><div id="barFill"></div></div>
+        <div id="downloads"></div>
+      </div>
+
+      <div class="panel">
+        <div class="canvasWrap">
+          <canvas id="cv"></canvas>
+        </div>
+        <p class="hint">المعاينة على التصميم فقط. يمكنك فتح ملف المعاينة داخل الصفحة بعد إنجازه.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ معاينة داخل الصفحة -->
+  <div class="modal" id="previewModal" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalTop">
+        <b>👁️ معاينة قبل الطباعة</b>
+        <button class="x" id="closePreview">إغلاق ✕</button>
+      </div>
+      <div class="modalBody">
+        <iframe id="previewFrame" src="about:blank"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ تأكيد بعد المعاينة -->
+  <div class="modal" id="confirmModal" aria-hidden="true">
+    <div class="confirmCard">
+      <h3>✅ تمت المعاينة</h3>
+      <p id="confirmText">هل تريد توليد ملف الطباعة النهائي الآن؟</p>
+      <div class="confirmActions">
+        <button class="btn" id="confirmGenerate">🖨️ توليد النهائي</button>
+        <button class="btn2" id="confirmClose">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+
+let img = new Image();
+let imgLoaded = false;
+
+const designInput = document.getElementById('design');
+const dataInput = document.getElementById('datafiles');
+const goBtn = document.getElementById('go');
+const previewBtn = document.getElementById('previewBtn');
+
+const fileListEl = document.getElementById('fileList');
+const statusEl = document.getElementById('status');
+const downloadsEl = document.getElementById('downloads');
+const barEl = document.getElementById('bar');
+const barFill = document.getElementById('barFill');
+
+let boxes = { username: null, password: null };
+let drag = null;
+let polling = null;
+
+function setStatus(t){ statusEl.textContent = t || ""; }
+function setBar(p){ barEl.style.display="block"; barFill.style.width = `${p}%`; }
+
+function clampInt(v, mn, mx, fallback){
+  v = Number(v);
+  if(!Number.isFinite(v)) return fallback;
+  v = Math.round(v);
+  return Math.max(mn, Math.min(mx, v));
+}
+
+function updateGridUI(){
+  const cEl = document.getElementById("cols");
+  const rEl = document.getElementById("rows");
+  const cols = clampInt(cEl.value, 1, 10, 5);
+  const rows = clampInt(rEl.value, 1, 14, 10);
+  cEl.value = cols; rEl.value = rows;
+
+  const n = cols * rows;
+  document.getElementById("cardsCalc").value = String(n);
+  document.getElementById("cardsPerPage").textContent = String(n);
+  document.getElementById("gridTxt").textContent = `${cols}×${rows}`;
+}
+
+function updateOrientationUI(){
+  const o = (document.getElementById("orientation").value || "portrait");
+  document.getElementById("oriTxt").textContent = o.startsWith("land") ? "أفقي" : "عمودي";
+}
+
+function updateAutoFitUI(){
+  const on = !!document.getElementById('autoFit')?.checked;
+  document.getElementById('marginPt').disabled = on;
+  document.getElementById('gapPt').disabled = on;
+}
+
+function validateReady(){
+  const ok = designInput.files.length && dataInput.files.length && boxes.username && boxes.password;
+  goBtn.disabled = !ok;
+  previewBtn.disabled = !ok;
+}
+
+function fitCanvasToImage(){
+  cv.width = img.naturalWidth;
+  cv.height = img.naturalHeight;
+  draw();
+}
+
+function draw(){
+  if(!imgLoaded){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.fillStyle="#0b1220"; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle="#9aa4b2"; ctx.font="16px Tahoma";
+    ctx.fillText("ارفع تصميم البطاقة للمعاينة", 20, 40);
+    return;
+  }
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(img,0,0,cv.width,cv.height);
+
+  function drawBox(b, label, color){
+    if(!b) return;
+    ctx.strokeStyle=color; ctx.lineWidth=Math.max(2, Math.round(cv.width/600));
+    ctx.strokeRect(b.x,b.y,b.w,b.h);
+    ctx.fillStyle=color;
+    ctx.font = `${Math.max(14, Math.round(cv.width/55))}px Tahoma`;
+    ctx.fillText(label, b.x+6, Math.max(18, b.y+18));
+    const s = Math.max(10, Math.round(cv.width/90));
+    ctx.fillRect(b.x - s/2, b.y + b.h - s/2, s, s);
+  }
+  drawBox(boxes.username, "اسم المستخدم", "#3b82f6");
+  drawBox(boxes.password, "كلمة المرور", "#22c55e");
+}
+
+function canvasPoint(evt){
+  const rect = cv.getBoundingClientRect();
+  const scaleX = cv.width / rect.width;
+  const scaleY = cv.height / rect.height;
+  return { x:(evt.clientX-rect.left)*scaleX, y:(evt.clientY-rect.top)*scaleY };
+}
+
+function hitTest(pt,b){
+  if(!b) return null;
+  const s = Math.max(10, Math.round(cv.width/90));
+  const hx=b.x, hy=b.y+b.h;
+  if(Math.abs(pt.x-hx)<=s && Math.abs(pt.y-hy)<=s) return "resize";
+  if(pt.x>=b.x && pt.x<=b.x+b.w && pt.y>=b.y && pt.y<=b.y+b.h) return "move";
+  return null;
+}
+
+cv.addEventListener('mousedown',(e)=>{
+  const pt = canvasPoint(e);
+  for(const key of ["username","password"]){
+    const b = boxes[key];
+    const h = hitTest(pt,b);
+    if(h){
+      drag = {key, mode:h, ox: pt.x-b.x, oy: pt.y-b.y, start:{...b}};
+      return;
+    }
+  }
+});
+
+window.addEventListener('mousemove',(e)=>{
+  if(!drag) return;
+  const pt = canvasPoint(e);
+  const b = boxes[drag.key];
+  if(drag.mode==="move"){
+    b.x = pt.x - drag.ox;
+    b.y = pt.y - drag.oy;
+  } else {
+    const start=drag.start;
+    const newX=pt.x, newY=pt.y;
+    b.x = Math.min(newX, start.x + start.w - 5);
+    b.w = (start.x + start.w) - b.x;
+    b.h = Math.max(10, newY - start.y);
+  }
+  b.x = Math.max(0, Math.min(cv.width-5, b.x));
+  b.y = Math.max(0, Math.min(cv.height-5, b.y));
+  b.w = Math.max(10, Math.min(cv.width - b.x, b.w));
+  b.h = Math.max(10, Math.min(cv.height - b.y, b.h));
+  draw();
+});
+window.addEventListener('mouseup',()=>{ drag=null; });
+
+document.getElementById('addUser').addEventListener('click',()=>{
+  if(!imgLoaded) return setStatus("ارفع تصميم البطاقة أولًا.");
+  if(!boxes.username) boxes.username = {x:cv.width*0.1, y:cv.height*0.1, w:cv.width*0.4, h:cv.height*0.12};
+  draw(); validateReady();
+});
+document.getElementById('addPass').addEventListener('click',()=>{
+  if(!imgLoaded) return setStatus("ارفع تصميم البطاقة أولًا.");
+  if(!boxes.password) boxes.password = {x:cv.width*0.1, y:cv.height*0.28, w:cv.width*0.4, h:cv.height*0.12};
+  draw(); validateReady();
+});
+
+designInput.addEventListener('change',()=>{
+  const f=designInput.files[0];
+  downloadsEl.innerHTML=""; setStatus(""); barEl.style.display="none"; barFill.style.width="0%";
+  if(!f) return;
+  const url = URL.createObjectURL(f);
+  img.onload=()=>{ imgLoaded=true; fitCanvasToImage(); validateReady(); };
+  img.src=url;
+});
+
+dataInput.addEventListener('change',()=>{
+  downloadsEl.innerHTML=""; setStatus(""); barEl.style.display="none"; barFill.style.width="0%";
+  const files = Array.from(dataInput.files||[]);
+  fileListEl.textContent = files.length ? ("الملفات المختارة: " + files.map(f=>f.name).join(" — ")) : "";
+  validateReady();
+});
+
+function openPreview(url){
+  const m = document.getElementById("previewModal");
+  document.getElementById("previewFrame").src = url;
+  m.classList.add("open");
+  m.setAttribute("aria-hidden","false");
+}
+function closePreview(){
+  const m = document.getElementById("previewModal");
+  document.getElementById("previewFrame").src = "about:blank";
+  m.classList.remove("open");
+  m.setAttribute("aria-hidden","true");
+}
+document.getElementById("closePreview").addEventListener("click", closePreview);
+document.getElementById("previewModal").addEventListener("click", (e)=>{ if(e.target && e.target.id === "previewModal") closePreview(); });
+
+function openConfirm(count){
+  const m = document.getElementById("confirmModal");
+  const t = document.getElementById("confirmText");
+  const cols = Number(document.getElementById("cols").value || 5);
+  const rows = Number(document.getElementById("rows").value || 10);
+  const per = cols * rows;
+  t.textContent = `المعاينة جاهزة. الشبكة الحالية: ${cols}×${rows} = ${per} بطاقة/صفحة. عدد البطاقات الإجمالي: ${count}. هل تريد توليد ملف الطباعة النهائي الآن؟`;
+  m.classList.add("open");
+  m.setAttribute("aria-hidden","false");
+}
+function closeConfirm(){
+  const m = document.getElementById("confirmModal");
+  m.classList.remove("open");
+  m.setAttribute("aria-hidden","true");
+}
+document.getElementById("confirmClose").addEventListener("click", closeConfirm);
+document.getElementById("confirmModal").addEventListener("click",(e)=>{ if(e.target && e.target.id==="confirmModal") closeConfirm(); });
+
+window.addEventListener("keydown",(e)=>{ if(e.key==="Escape"){ closePreview(); closeConfirm(); } });
+
+function buildFormData(previewOnly){
+  const uSize = Number(document.getElementById("uSize").value || 14);
+  const pSize = Number(document.getElementById("pSize").value || 14);
+  const uColor = document.getElementById("uColor").value || "#ffffff";
+  const pColor = document.getElementById("pColor").value || "#ffffff";
+
+  const placement = {};
+  for(const key of ["username","password"]){
+    const b=boxes[key];
+    placement[key]={x:b.x/cv.width, y:b.y/cv.height, w:b.w/cv.width, h:b.h/cv.height};
+  }
+  placement.username.font_size = uSize;
+  placement.username.color = uColor;
+  placement.password.font_size = pSize;
+  placement.password.color = pColor;
+
+  const fd = new FormData();
+  fd.append("design", designInput.files[0]);
+  const files = Array.from(dataInput.files||[]);
+  for(const f of files){ fd.append("datafiles", f); }
+  fd.append("placement_json", JSON.stringify(placement));
+  fd.append("max_cards", document.getElementById("maxCards").value);
+  fd.append("cols", document.getElementById("cols").value);
+  fd.append("rows", document.getElementById("rows").value);
+  fd.append("margin_pt", document.getElementById("marginPt").value);
+  fd.append("gap_pt", document.getElementById("gapPt").value);
+  fd.append("orientation", document.getElementById("orientation").value || "portrait");
+  fd.append("crop_marks", (document.getElementById("cropMarks").checked) ? "true" : "false");
+  fd.append("auto_fit", (document.getElementById("autoFit").checked) ? "true" : "false");
+  fd.append("preview_only", previewOnly ? "true" : "false");
+  return fd;
+}
+
+async function startJob(previewOnly){
+  downloadsEl.innerHTML="";
+  setStatus(previewOnly ? "بدء المعاينة..." : "بدء توليد الملف النهائي...");
+  setBar(1);
+  try{
+    const fd = buildFormData(!!previewOnly);
+    const res = await fetch("/api/process",{method:"POST", body:fd});
+    const js = await res.json();
+    if(!res.ok){ setStatus(js.error || "حدث خطأ."); return; }
+    await poll(js.job_id);
+  }catch(e){
+    setStatus("تعذر الاتصال بالخادم.");
+  }
+}
+
+document.getElementById("confirmGenerate").addEventListener("click", async ()=>{ closeConfirm(); await startJob(false); });
+
+async function poll(job_id){
+  if(polling) clearInterval(polling);
+  polling = setInterval(async ()=>{
+    const res = await fetch(`/api/status/${job_id}`);
+    const js = await res.json();
+    if(!res.ok){ setStatus(js.error||"حدث خطأ."); clearInterval(polling); return; }
+    setBar(js.progress||0);
+    setStatus(`جارٍ المعالجة... ${js.progress||0}%`);
+
+    if(js.status === "done"){
+      clearInterval(polling);
+      setStatus(js.preview_only ? `✅ تمت المعاينة بنجاح — عدد البطاقات: ${js.count}` : `✅ تم التوليد بنجاح — عدد البطاقات: ${js.count}`);
+
+      downloadsEl.innerHTML = `
+        <a class="dl secondary" href="${js.preview_url}" target="_blank">⬇️ تنزيل ملف المعاينة (أول صفحة)</a><br/>
+        <button class="btn2" id="openPreview" style="margin-top:10px">👁️ فتح المعاينة داخل الصفحة</button><br/>
+        ${js.preview_only ? "" : `<a class="dl" href="${js.pdf_url}" target="_blank">⬇️ تنزيل ملف الطباعة PDF</a><br/>`}
+        <a class="dl secondary" href="${js.csv_url}" target="_blank">⬇️ تنزيل ملف CSV (username,password)</a>
+      `;
+      const btn = document.getElementById("openPreview");
+      if(btn){ btn.addEventListener("click", ()=> openPreview(js.preview_url)); }
+      if(js.preview_only){ openConfirm(js.count); }
+    } else if(js.status === "error"){
+      clearInterval(polling);
+      setStatus(`❌ خطأ: ${js.error || "تعذر إكمال العملية"}`);
+    }
+  }, 650);
+}
+
+previewBtn.addEventListener('click', async ()=>{ await startJob(true); });
+goBtn.addEventListener('click', async ()=>{ await startJob(false); });
+
+updateGridUI();
+updateOrientationUI();
+updateAutoFitUI();
+["cols","rows"].forEach(id=> document.getElementById(id).addEventListener("input", ()=>{ updateGridUI(); }));
+document.getElementById("orientation").addEventListener("change", ()=> updateOrientationUI());
+document.getElementById("autoFit").addEventListener("change", ()=> updateAutoFitUI());
+
+draw();
+</script>
+</body>
+</html>
